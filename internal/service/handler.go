@@ -36,11 +36,13 @@ type HTTPError struct {
 
 type serviceHandler struct {
 	urlStore *store.Store
+	baseURL string
 }
 
-func NewServiceHandler(urlStore *store.Store) *mux.Router {
+func NewServiceHandler(urlStore *store.Store, serviceBaseURL string) *mux.Router {
 	handler := &serviceHandler{
 		urlStore: urlStore,
+		baseURL: serviceBaseURL,
 	}
 
 	router := mux.NewRouter()
@@ -54,9 +56,8 @@ func NewServiceHandler(urlStore *store.Store) *mux.Router {
 
 func (s *serviceHandler) addURL(w http.ResponseWriter, r *http.Request) {
 	var reqPayload AddURLRequest
-	fmt.Printf("body %v", r.Body)
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(reqPayload); err != nil {
+	if err := decoder.Decode(&reqPayload); err != nil {
 		payload := HTTPError{
 			Error:  "Bad Request",
 			Status: http.StatusBadRequest,
@@ -67,17 +68,28 @@ func (s *serviceHandler) addURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	shortKey, err := s.urlStore.Add(reqPayload.URL)
+	fmt.Println(shortKey, err)
 	if err != nil {
-		payload := HTTPError{
-			Error:  err.Error(),
-			Status: http.StatusInternalServerError,
-		}
-		serializeJSON(w, payload.Status, payload)
-		return
+    switch err.(type) {
+    case store.ErrorInvalidInputURL:
+      payload := HTTPError{
+        Error:  err.Error(),
+        Status: http.StatusBadRequest,
+      }
+      serializeJSON(w, payload.Status, payload)
+      return
+    default:
+      payload := HTTPError{
+        Error:  err.Error(),
+        Status: http.StatusInternalServerError,
+      }
+      serializeJSON(w, payload.Status, payload)
+      return
+    }
 	}
 
 	respPayload := AddURLResponse{
-		TinyURL: shortKey,
+		TinyURL: fmt.Sprintf("%s/%s", s.baseURL, shortKey),
 	}
 
 	serializeJSON(w, http.StatusCreated, respPayload)
@@ -94,9 +106,9 @@ func (s *serviceHandler) getURL(w http.ResponseWriter, r *http.Request) {
 		serializeJSON(w, payload.Status, payload)
 		return
 	}
-	url, err := s.urlStore.Get(tinyURL)
-	if err != nil {
 
+  originalURL, err := s.urlStore.Get(tinyURL)
+	if err != nil {
 		switch err.(type) {
 		case store.ErrorNotStoredShortURL:
 			payload := HTTPError{
@@ -112,10 +124,9 @@ func (s *serviceHandler) getURL(w http.ResponseWriter, r *http.Request) {
 			}
 			serializeJSON(w, payload.Status, payload)
 			return
-
 		}
 	}
-	http.Redirect(w, r, url, 301)
+	http.Redirect(w, r, originalURL,301)
 	return
 }
 

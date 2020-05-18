@@ -1,44 +1,49 @@
 package config
 
 import (
-	"github.com/spf13/viper"
+	"os"
+	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
-	HTTP  HTTPConfig
-	Redis RedisConfig
-	Cache CacheConfig
+	HTTP  HTTPConfig  `yaml:"http"`
+	Redis RedisConfig `yaml:"redis"`
+	Cache CacheConfig `yaml:"cache"`
+	Service ServiceConfig `yaml:"service"`
 }
 
 type HTTPConfig struct {
-	Port int
+  Host string `yaml:"host"`
+	Port int `yaml:"port"`
 }
 
 type RedisConfig struct {
-	Host     string
-	Password string
-	Database int
+	Host     string `yaml:"host"`
+	Password string `yaml:"password"`
+	Database int    `yaml:"database"`
 }
 
 type CacheConfig struct {
-	Size int
+	Size int `yaml:"size"`
 }
 
-func LoadConfig(path string) (Config, error) {
-	var config Config
+type ServiceConfig struct {
+  BaseURL string `yaml:"baseURL"`
+}
 
-	viper.SetConfigName("config")
-	viper.AutomaticEnv()
+func LoadConfig(filePath string) (*Config, error) {
+	var cfg Config
 
-	viper.AddConfigPath(path)
-
-	if err := viper.ReadInConfig(); err != nil {
-		return config, err
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
 	}
+	defer file.Close()
 
-	if err := viper.Unmarshal(&config); err != nil {
-		return config, err
-	}
+	decoder := yaml.NewDecoder(file)
+  if err = decoder.Decode(&cfg); err != nil {
+    return nil, err
+  }
 
-	return config, nil
+	return &cfg, nil
 }

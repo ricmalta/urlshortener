@@ -2,10 +2,8 @@ package store
 
 import (
 	"fmt"
-	"strconv"
-	"sync"
-
-	"github.com/ricmalta/urlshortner/internal/config"
+  "regexp"
+  "strconv"
 
 	"github.com/go-redis/redis"
 	lru "github.com/hashicorp/golang-lru"
@@ -18,25 +16,9 @@ const (
 type Store struct {
 	cache       *lru.Cache
 	redisClient *redis.Client
-	wg          sync.WaitGroup
 }
 
-func NewStore(cfg config.Config) (*Store, error) {
-	cache, err := lru.New(cfg.Cache.Size)
-	if err != nil {
-		return nil, err
-	}
-
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     cfg.Redis.Host,
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.Database,
-	})
-	// check redis connection
-	if _, err := redisClient.Ping().Result(); err != nil {
-		return nil, err
-	}
-
+func NewStore(cache *lru.Cache, redisClient *redis.Client) (*Store, error) {
 	storeInstance := &Store{
 		cache:       cache,
 		redisClient: redisClient,
@@ -46,31 +28,19 @@ func NewStore(cfg config.Config) (*Store, error) {
 }
 
 func (store *Store) Add(URL string) (shortKey string, err error) {
-	store.wg.Add(1)
-
-	var value string
-	err = store.redisClient.Watch(func(tx *redis.Tx) error {
-		counterIncr := tx.Incr(counterKeyName)
-		if counterIncr.Err() != nil {
-			return counterIncr.Err()
-		}
-
-		key := strconv.FormatInt(counterIncr.Val(), 36)
-		_, err = tx.TxPipelined(func(pipe redis.Pipeliner) error {
-			statusCmd := pipe.Set(key, URL, 0)
-			if statusCmd.Err() != nil {
-				return statusCmd.Err()
-			}
-			return nil
-		})
-		// set the return value
-		value = key
-		store.wg.Done()
-		return nil
-	}, counterKeyName)
-
-	store.wg.Wait()
-	return value, err
+  if match, _ := regexp.MatchString(`^http(s)?://[a-z0-9A-Z\.]+/?`, URL); !match {
+    return "", ErrorInvalidInputURL{}
+  }
+	incrCmd := store.redisClient.Incr(counterKeyName)
+  if incrCmd.Err() != nil {
+    return "", incrCmd.Err()
+  }
+  key := strconv.FormatInt(incrCmd.Val(), 36)
+  statusCmd := store.redisClient.Set(key, URL, 0)
+  if statusCmd.Err() != nil {
+    return "", statusCmd.Err()
+  }
+	return key, err
 }
 
 func (store *Store) Get(shortKey string) (url string, err error) {

@@ -1,4 +1,7 @@
+service:
+  baseURL: "http://tiny.example.com"
 http:
+  host: "0.0.0.0"
   port: 3000
 cache:
   size: 1000
