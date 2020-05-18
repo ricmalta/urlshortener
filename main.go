@@ -11,10 +11,10 @@ func main() {
 		panic(err.Error())
 	}
 
-	srv, err := service.NewService(cfg)
+	service, err := service.NewService(cfg)
 	if err != nil {
 		panic(err.Error())
 	}
 
-	srv.Start()
+	service.Start()
 }
