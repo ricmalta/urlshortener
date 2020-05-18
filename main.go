@@ -1,6 +1,7 @@
 package main
 
 import (
+  "flag"
   "fmt"
   "github.com/go-redis/redis"
   lru "github.com/hashicorp/golang-lru"
@@ -12,7 +13,10 @@ import (
 )
 
 func main() {
-	cfg, err := config.LoadConfig("./internal/config/config.yaml")
+  configPath := flag.String("config", "./internal/config/config.yaml", "config file path")
+  flag.Parse()
+
+	cfg, err := config.LoadConfig(*configPath)
 	if err != nil {
 		panic(err.Error())
 	}
