@@ -1,8 +1,8 @@
 package service
 
 import (
-  "fmt"
   "github.com/ricmalta/urlshortner/internal/store"
+  "github.com/sirupsen/logrus"
   "net/http"
   "os"
 )
@@ -10,18 +10,20 @@ import (
 type Service struct {
 	urlStore   *store.Store
 	httpServer *http.Server
+  logger    *logrus.Logger
 	quitC      chan os.Signal
 }
 
-func NewService(httpServer *http.Server, urlStore *store.Store) (*Service, error) {
+func NewService(httpServer *http.Server, urlStore *store.Store, logger *logrus.Logger) (*Service, error) {
 	return &Service{
 		urlStore:   urlStore,
 		httpServer: httpServer,
+    logger:    logger,
 	}, nil
 }
 
 func (service *Service) Start() error {
-	fmt.Printf("HTTP server started at %s", service.httpServer.Addr)
+	service.logger.Infof("HTTP server started at %s", service.httpServer.Addr)
 	if err := service.httpServer.ListenAndServe(); err != nil {
 		return err
 	}
@@ -29,3 +31,6 @@ func (service *Service) Start() error {
 	return nil
 }
 
+func (service *Service) Shutdown() error {
+  return nil
+}

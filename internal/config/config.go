@@ -10,6 +10,7 @@ type Config struct {
 	Redis RedisConfig `yaml:"redis"`
 	Cache CacheConfig `yaml:"cache"`
 	Service ServiceConfig `yaml:"service"`
+	LogLevel string `yaml:"logLevel"`
 }
 
 type HTTPConfig struct {

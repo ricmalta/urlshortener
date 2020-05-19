@@ -9,3 +9,4 @@ redis:
   host: redis:6379
   password:
   database: 0
+logLevel: "debug"

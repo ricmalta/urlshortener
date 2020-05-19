@@ -9,7 +9,7 @@ require (
 	github.com/gomodule/redigo v1.8.1 // indirect
 	github.com/gorilla/mux v1.7.4
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/spf13/viper v1.7.0 // indirect
+	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.5.1
 	github.com/yuin/gopher-lua v0.0.0-20191220021717-ab39c6098bdb // indirect
 	gopkg.in/yaml.v2 v2.3.0

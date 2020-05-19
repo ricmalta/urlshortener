@@ -3,7 +3,7 @@ package service
 import (
 	"encoding/json"
   "fmt"
-  "os"
+  "github.com/sirupsen/logrus"
 
   "github.com/gorilla/mux"
 	"github.com/ricmalta/urlshortner/internal/store"
@@ -36,12 +36,14 @@ type HTTPError struct {
 
 type serviceHandler struct {
 	urlStore *store.Store
+  logger *logrus.Logger
 	baseURL string
 }
 
-func NewServiceHandler(urlStore *store.Store, serviceBaseURL string) *mux.Router {
+func NewServiceHandler(urlStore *store.Store, logger *logrus.Logger,serviceBaseURL string) *mux.Router {
 	handler := &serviceHandler{
 		urlStore: urlStore,
+		logger: logger,
 		baseURL: serviceBaseURL,
 	}
 
@@ -49,7 +51,7 @@ func NewServiceHandler(urlStore *store.Store, serviceBaseURL string) *mux.Router
 	router.HandleFunc("/", handler.addURL).Methods("POST")
 	router.HandleFunc("/{tinyURL}", handler.getURL).Methods("GET")
 
-	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
+	router.NotFoundHandler = http.HandlerFunc(handler.notFoundHandler)
 
 	return router
 }
@@ -62,13 +64,12 @@ func (s *serviceHandler) addURL(w http.ResponseWriter, r *http.Request) {
 			Error:  "Bad Request",
 			Status: http.StatusBadRequest,
 		}
-		serializeJSON(w, payload.Status, payload)
-		fmt.Fprintf(os.Stderr, "error decoding url to encode %v\n", err)
+		s.serializeJSON(w, payload.Status, payload)
+		s.logger.Errorf("error decoding url to encode %v", err)
 		return
 	}
 
 	shortKey, err := s.urlStore.Add(reqPayload.URL)
-	fmt.Println(shortKey, err)
 	if err != nil {
     switch err.(type) {
     case store.ErrorInvalidInputURL:
@@ -76,14 +77,16 @@ func (s *serviceHandler) addURL(w http.ResponseWriter, r *http.Request) {
         Error:  err.Error(),
         Status: http.StatusBadRequest,
       }
-      serializeJSON(w, payload.Status, payload)
+      s.serializeJSON(w, payload.Status, payload)
+      s.logger.Error(err)
       return
     default:
       payload := HTTPError{
         Error:  err.Error(),
         Status: http.StatusInternalServerError,
       }
-      serializeJSON(w, payload.Status, payload)
+      s.logger.Error(err)
+      s.serializeJSON(w, payload.Status, payload)
       return
     }
 	}
@@ -92,7 +95,7 @@ func (s *serviceHandler) addURL(w http.ResponseWriter, r *http.Request) {
 		TinyURL: fmt.Sprintf("%s/%s", s.baseURL, shortKey),
 	}
 
-	serializeJSON(w, http.StatusCreated, respPayload)
+	s.serializeJSON(w, http.StatusCreated, respPayload)
 	return
 }
 
@@ -103,7 +106,8 @@ func (s *serviceHandler) getURL(w http.ResponseWriter, r *http.Request) {
 			Error:  "Bad Request",
 			Status: http.StatusBadRequest,
 		}
-		serializeJSON(w, payload.Status, payload)
+    s.logger.Error("parsing tiny url")
+		s.serializeJSON(w, payload.Status, payload)
 		return
 	}
 
@@ -115,14 +119,16 @@ func (s *serviceHandler) getURL(w http.ResponseWriter, r *http.Request) {
 				Error:  err.Error(),
 				Status: http.StatusNotFound,
 			}
-			serializeJSON(w, payload.Status, payload)
+      s.logger.Warnf("tiny url %s not found", tinyURL)
+			s.serializeJSON(w, payload.Status, payload)
 			return
 		default:
 			payload := HTTPError{
 				Error:  err.Error(),
 				Status: http.StatusInternalServerError,
 			}
-			serializeJSON(w, payload.Status, payload)
+      s.logger.Error(err)
+			s.serializeJSON(w, payload.Status, payload)
 			return
 		}
 	}
@@ -130,7 +136,7 @@ func (s *serviceHandler) getURL(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func serializeJSON(w http.ResponseWriter, status int, data interface{}) {
+func (s *serviceHandler) serializeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set(contentTypeHeader, contentTypeJSON)
 	w.WriteHeader(status)
 
@@ -142,15 +148,16 @@ func serializeJSON(w http.ResponseWriter, status int, data interface{}) {
 				Error:  "Internal Server Error",
 				Status: http.StatusInternalServerError,
 			})
+			s.logger.Error(err)
 		}
 	}
 }
 
-func notFoundHandler(w http.ResponseWriter, r *http.Request) {
+func (s *serviceHandler) notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	payload := HTTPError{
 		Error:  "Not Found",
 		Status: http.StatusNotFound,
 	}
-	serializeJSON(w, payload.Status, payload)
+	s.serializeJSON(w, payload.Status, payload)
 	return
 }

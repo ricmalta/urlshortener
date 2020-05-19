@@ -5,6 +5,7 @@ import (
   "fmt"
   "github.com/go-redis/redis"
   lru "github.com/hashicorp/golang-lru"
+  "github.com/ricmalta/urlshortner/internal/logger"
   "github.com/ricmalta/urlshortner/internal/config"
 	"github.com/ricmalta/urlshortner/internal/service"
   "github.com/ricmalta/urlshortner/internal/store"
@@ -21,10 +22,16 @@ func main() {
 		panic(err.Error())
 	}
 
+  logger, err := logger.New(cfg.LogLevel)
+  if err != nil {
+    panic(err.Error())
+  }
+
 	// LRU cache instance
   cache, err := lru.New(cfg.Cache.Size)
   if err != nil {
     panic(err)
+
   }
 
   // Redis client
@@ -39,7 +46,7 @@ func main() {
   }
 
   // URL store Instance
-  urlStore, err := store.NewStore(cache, redisClient)
+  urlStore, err := store.NewStore(cache, redisClient, logger)
   if err != nil {
     panic(err)
   }
@@ -47,7 +54,7 @@ func main() {
     // HTTP server instance
   httpServer := &http.Server{
     Addr:              fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port),
-    Handler:           service.NewServiceHandler(urlStore, cfg.Service.BaseURL),
+    Handler:           service.NewServiceHandler(urlStore, logger, cfg.Service.BaseURL),
     ReadTimeout:       1 * time.Second,
     WriteTimeout:      1 * time.Second,
     IdleTimeout:       30 * time.Second,
@@ -55,7 +62,7 @@ func main() {
   }
 
   // Short URL service instance
-	service, err := service.NewService(httpServer, urlStore)
+	service, err := service.NewService(httpServer, urlStore, logger)
 	if err != nil {
 		panic(err.Error())
 	}
