@@ -2,20 +2,21 @@ package config
 
 import (
 	"os"
+
 	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
-	HTTP  HTTPConfig  `yaml:"http"`
-	Redis RedisConfig `yaml:"redis"`
-	Cache CacheConfig `yaml:"cache"`
-	Service ServiceConfig `yaml:"service"`
-	LogLevel string `yaml:"logLevel"`
+	HTTP     HTTPConfig    `yaml:"http"`
+	Redis    RedisConfig   `yaml:"redis"`
+	Cache    CacheConfig   `yaml:"cache"`
+	Service  ServiceConfig `yaml:"service"`
+	LogLevel string        `yaml:"logLevel"`
 }
 
 type HTTPConfig struct {
-  Host string `yaml:"host"`
-	Port int `yaml:"port"`
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
 }
 
 type RedisConfig struct {
@@ -29,7 +30,7 @@ type CacheConfig struct {
 }
 
 type ServiceConfig struct {
-  BaseURL string `yaml:"baseURL"`
+	BaseURL string `yaml:"baseURL"`
 }
 
 func LoadConfig(filePath string) (*Config, error) {
@@ -42,9 +43,9 @@ func LoadConfig(filePath string) (*Config, error) {
 	defer file.Close()
 
 	decoder := yaml.NewDecoder(file)
-  if err = decoder.Decode(&cfg); err != nil {
-    return nil, err
-  }
+	if err = decoder.Decode(&cfg); err != nil {
+		return nil, err
+	}
 
 	return &cfg, nil
 }

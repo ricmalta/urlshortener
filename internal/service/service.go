@@ -1,16 +1,17 @@
 package service
 
 import (
-  "github.com/ricmalta/urlshortner/internal/store"
-  "github.com/sirupsen/logrus"
-  "net/http"
-  "os"
+	"net/http"
+	"os"
+
+	"github.com/ricmalta/urlshortner/internal/store"
+	"github.com/sirupsen/logrus"
 )
 
 type Service struct {
 	urlStore   *store.Store
 	httpServer *http.Server
-  logger    *logrus.Logger
+	logger     *logrus.Logger
 	quitC      chan os.Signal
 }
 
@@ -18,7 +19,7 @@ func NewService(httpServer *http.Server, urlStore *store.Store, logger *logrus.L
 	return &Service{
 		urlStore:   urlStore,
 		httpServer: httpServer,
-    logger:    logger,
+		logger:     logger,
 	}, nil
 }
 
@@ -32,5 +33,5 @@ func (service *Service) Start() error {
 }
 
 func (service *Service) Shutdown() error {
-  return nil
+	return nil
 }

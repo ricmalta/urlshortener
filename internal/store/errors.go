@@ -11,5 +11,5 @@ type ErrorInvalidInputURL struct {
 }
 
 func (e ErrorInvalidInputURL) Error() string {
-  return "invalid input URL"
+	return "invalid input URL"
 }
