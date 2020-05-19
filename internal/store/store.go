@@ -64,6 +64,7 @@ func (store *Store) Get(shortKey string) (url string, err error) {
 	return "", ErrorNotStoredShortURL{}
 }
 
-func (store *Store) Shutdown() {
-
+func (store *Store) Shutdown() error {
+	store.logger.Info("Redis client shutting down gracefully")
+	return store.redisClient.Close()
 }

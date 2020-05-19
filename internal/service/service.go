@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"net/http"
 	"os"
 
@@ -32,6 +33,7 @@ func (service *Service) Start() error {
 	return nil
 }
 
-func (service *Service) Shutdown() error {
-	return nil
+func (service *Service) Shutdown(ctx context.Context) error {
+	service.logger.Info("HTTP server shutting down gracefully")
+	return service.httpServer.Shutdown(ctx)
 }

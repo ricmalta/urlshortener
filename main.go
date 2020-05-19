@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -71,5 +75,20 @@ func main() {
 	}
 
 	// Start service
-	service.Start()
+	go func() {
+		if err := service.Start(); err != nil {
+			logger.Fatal(err)
+		}
+	}()
+
+	// create quit channel and wait until receive the process interrupt
+	quitC := make(chan os.Signal, 1)
+	signal.Notify(quitC, os.Interrupt, syscall.SIGTERM)
+	<-quitC
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := service.Shutdown(ctx); err != nil {
+		logger.Fatalf("HTTP server shutdown failed '%v'", err)
+	}
 }
