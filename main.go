@@ -51,10 +51,12 @@ func main() {
     panic(err)
   }
 
-    // HTTP server instance
+  serviceHandler := service.NewHandler(urlStore, logger, cfg.Service.BaseURL)
+
+  // HTTP server instance
   httpServer := &http.Server{
     Addr:              fmt.Sprintf("%s:%d", cfg.HTTP.Host, cfg.HTTP.Port),
-    Handler:           service.NewServiceHandler(urlStore, logger, cfg.Service.BaseURL),
+    Handler:           serviceHandler.Router,
     ReadTimeout:       1 * time.Second,
     WriteTimeout:      1 * time.Second,
     IdleTimeout:       30 * time.Second,

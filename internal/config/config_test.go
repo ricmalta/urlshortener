@@ -42,4 +42,5 @@ func TestValidFile(t *testing.T) {
   assert.Equal(t, cfg.Redis.Password, testCfg.Redis.Password)
   assert.Equal(t, cfg.Service.BaseURL, testCfg.Service.BaseURL)
   assert.Equal(t, cfg.Cache.Size, testCfg.Cache.Size)
+  assert.Equal(t, cfg.LogLevel, testCfg.LogLevel)
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
   "fmt"
   "github.com/sirupsen/logrus"
+  "strings"
 
   "github.com/gorilla/mux"
 	"github.com/ricmalta/urlshortner/internal/store"
@@ -34,29 +35,30 @@ type HTTPError struct {
 	Status int    `json:"status"`
 }
 
-type serviceHandler struct {
+type Handler struct {
 	urlStore *store.Store
   logger *logrus.Logger
-	baseURL string
+  baseURL string
+  Router *mux.Router
 }
 
-func NewServiceHandler(urlStore *store.Store, logger *logrus.Logger,serviceBaseURL string) *mux.Router {
-	handler := &serviceHandler{
+func NewHandler(urlStore *store.Store, logger *logrus.Logger,serviceBaseURL string) *Handler {
+	handler := &Handler{
 		urlStore: urlStore,
 		logger: logger,
 		baseURL: serviceBaseURL,
+    Router: mux.NewRouter(),
 	}
+  handler.Router.HandleFunc("/", handler.AddURL).Methods("POST")
+  handler.Router.HandleFunc("/{tinyURL}", handler.GetURL).Methods("GET")
 
-	router := mux.NewRouter()
-	router.HandleFunc("/", handler.addURL).Methods("POST")
-	router.HandleFunc("/{tinyURL}", handler.getURL).Methods("GET")
+  handler.Router.NotFoundHandler = http.HandlerFunc(handler.NotFoundHandler)
+  handler.Router.MethodNotAllowedHandler = http.HandlerFunc(handler.NotFoundHandler)
 
-	router.NotFoundHandler = http.HandlerFunc(handler.notFoundHandler)
-
-	return router
+	return handler
 }
 
-func (s *serviceHandler) addURL(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) AddURL(w http.ResponseWriter, r *http.Request) {
 	var reqPayload AddURLRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&reqPayload); err != nil {
@@ -64,7 +66,7 @@ func (s *serviceHandler) addURL(w http.ResponseWriter, r *http.Request) {
 			Error:  "Bad Request",
 			Status: http.StatusBadRequest,
 		}
-		s.serializeJSON(w, payload.Status, payload)
+		s.SerializeJSON(w, payload.Status, payload)
 		s.logger.Errorf("error decoding url to encode %v", err)
 		return
 	}
@@ -77,7 +79,7 @@ func (s *serviceHandler) addURL(w http.ResponseWriter, r *http.Request) {
         Error:  err.Error(),
         Status: http.StatusBadRequest,
       }
-      s.serializeJSON(w, payload.Status, payload)
+      s.SerializeJSON(w, payload.Status, payload)
       s.logger.Error(err)
       return
     default:
@@ -86,7 +88,7 @@ func (s *serviceHandler) addURL(w http.ResponseWriter, r *http.Request) {
         Status: http.StatusInternalServerError,
       }
       s.logger.Error(err)
-      s.serializeJSON(w, payload.Status, payload)
+      s.SerializeJSON(w, payload.Status, payload)
       return
     }
 	}
@@ -95,19 +97,23 @@ func (s *serviceHandler) addURL(w http.ResponseWriter, r *http.Request) {
 		TinyURL: fmt.Sprintf("%s/%s", s.baseURL, shortKey),
 	}
 
-	s.serializeJSON(w, http.StatusCreated, respPayload)
+	s.SerializeJSON(w, http.StatusCreated, respPayload)
 	return
 }
 
-func (s *serviceHandler) getURL(w http.ResponseWriter, r *http.Request) {
-	tinyURL, ok := mux.Vars(r)["tinyURL"]
-	if !ok {
+func (s *Handler) GetURL(w http.ResponseWriter, r *http.Request) {
+  parts := strings.Split(r.URL.Path, "/")
+  var tinyURL string
+  if len(parts) > 0 {
+    tinyURL = parts[1]
+  }
+	if tinyURL == "" {
 		payload := HTTPError{
 			Error:  "Bad Request",
 			Status: http.StatusBadRequest,
 		}
     s.logger.Error("parsing tiny url")
-		s.serializeJSON(w, payload.Status, payload)
+		s.SerializeJSON(w, payload.Status, payload)
 		return
 	}
 
@@ -120,7 +126,7 @@ func (s *serviceHandler) getURL(w http.ResponseWriter, r *http.Request) {
 				Status: http.StatusNotFound,
 			}
       s.logger.Warnf("tiny url %s not found", tinyURL)
-			s.serializeJSON(w, payload.Status, payload)
+			s.SerializeJSON(w, payload.Status, payload)
 			return
 		default:
 			payload := HTTPError{
@@ -128,7 +134,7 @@ func (s *serviceHandler) getURL(w http.ResponseWriter, r *http.Request) {
 				Status: http.StatusInternalServerError,
 			}
       s.logger.Error(err)
-			s.serializeJSON(w, payload.Status, payload)
+			s.SerializeJSON(w, payload.Status, payload)
 			return
 		}
 	}
@@ -136,7 +142,7 @@ func (s *serviceHandler) getURL(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (s *serviceHandler) serializeJSON(w http.ResponseWriter, status int, data interface{}) {
+func (s *Handler) SerializeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set(contentTypeHeader, contentTypeJSON)
 	w.WriteHeader(status)
 
@@ -153,11 +159,11 @@ func (s *serviceHandler) serializeJSON(w http.ResponseWriter, status int, data i
 	}
 }
 
-func (s *serviceHandler) notFoundHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	payload := HTTPError{
 		Error:  "Not Found",
 		Status: http.StatusNotFound,
 	}
-	s.serializeJSON(w, payload.Status, payload)
+	s.SerializeJSON(w, payload.Status, payload)
 	return
 }
