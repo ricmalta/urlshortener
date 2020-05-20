@@ -3,7 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-  "strings"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -103,7 +103,7 @@ func (s *Handler) addURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Handler) getURL(w http.ResponseWriter, r *http.Request) {
-  tinyURL, ok :=  getTinyURLParam(r)
+	tinyURL, ok := getTinyURLParam(r)
 	if !ok {
 		payload := HTTPError{
 			Error:  "Bad Request",
@@ -166,14 +166,14 @@ func (s *Handler) notFoundHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getTinyURLParam(r *http.Request) (value string, ok bool) {
-  ok = false
-  if tinyURL, ok := mux.Vars(r)["tinyURL"]; ok {
-    return tinyURL, ok
-  }
-  // workaround to support net/httptest
-  if parts := strings.Split(r.URL.Path, "/"); len(parts) > 0 {
-    value = parts[1]
-    ok = true
-  }
-  return
+	ok = false
+	if tinyURL, ok := mux.Vars(r)["tinyURL"]; ok {
+		return tinyURL, ok
+	}
+	// workaround to support net/httptest
+	if parts := strings.Split(r.URL.Path, "/"); len(parts) > 0 {
+		value = parts[1]
+		ok = true
+	}
+	return
 }

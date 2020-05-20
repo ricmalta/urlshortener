@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-  "net/url"
-  "strings"
+	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/alicebob/miniredis"
@@ -24,7 +24,7 @@ const (
 	addInvalidURL          = "--https://www.example.com/test"
 	getNonexistentShortURL = "/aaaaa"
 	baseURL                = "http://tiny.test.com"
-	tinyURL = "http://tiny.test.com/70"
+	tinyURL                = "http://tiny.test.com/70"
 )
 
 var (
@@ -175,12 +175,12 @@ func TestGetValidURL(t *testing.T) {
 }
 
 func TestGetURLParam(t *testing.T) {
-  url, err := url.Parse(tinyURL)
-  if err != nil {
-    t.Error(err)
-  }
-  request := http.Request{ URL: url }
-  tiny, ok := getTinyURLParam(&request)
-  assert.Equal(t, "70", tiny)
-  assert.Equal(t, true, ok)
+	url, err := url.Parse(tinyURL)
+	if err != nil {
+		t.Error(err)
+	}
+	request := http.Request{URL: url}
+	tiny, ok := getTinyURLParam(&request)
+	assert.Equal(t, "70", tiny)
+	assert.Equal(t, true, ok)
 }

@@ -1,7 +1,7 @@
 package store
 
 import (
-  "testing"
+	"testing"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis"
@@ -57,21 +57,21 @@ func TestAddInvalidURL(t *testing.T) {
 func TestAddValidURL(t *testing.T) {
 	shortKey, err := storeInstance.Add(addValidURL)
 	assert.Nil(t, err, "return no error")
-  assert.Equal(t, "1", shortKey, "short key should be empty")
+	assert.Equal(t, "1", shortKey, "short key should be empty")
 	assert.NotEqual(t, "aa", shortKey, "short key should not be empty")
 }
 
 func TestGetExistingURL(t *testing.T) {
-  shortKey, err := storeInstance.Add(addValidURL)
-  assert.Nil(t, err, "return no error")
-  assert.Equal(t, "2", shortKey, "short key should be empty")
-  shortKey, err = storeInstance.Get("2")
-  assert.Nil(t, err, "return no error")
-  assert.Equal(t, addValidURL, shortKey, "short key should be empty")
+	shortKey, err := storeInstance.Add(addValidURL)
+	assert.Nil(t, err, "return no error")
+	assert.Equal(t, "2", shortKey, "short key should be empty")
+	shortKey, err = storeInstance.Get("2")
+	assert.Nil(t, err, "return no error")
+	assert.Equal(t, addValidURL, shortKey, "short key should be empty")
 }
 
 func TestGetUnexistingURL(t *testing.T) {
-  shortKey, err := storeInstance.Get("79")
-  assert.NotNil(t, err, "return no error")
-  assert.Equal(t, "", shortKey, "short key should be empty")
+	shortKey, err := storeInstance.Get("79")
+	assert.NotNil(t, err, "return no error")
+	assert.Equal(t, "", shortKey, "short key should be empty")
 }
