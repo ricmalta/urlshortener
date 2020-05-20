@@ -3,7 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
+  "strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -50,16 +50,16 @@ func NewHandler(urlStore *store.Store, logger *logrus.Logger, serviceBaseURL str
 		baseURL:  serviceBaseURL,
 		Router:   mux.NewRouter(),
 	}
-	handler.Router.HandleFunc("/", handler.AddURL).Methods("POST")
-	handler.Router.HandleFunc("/{tinyURL}", handler.GetURL).Methods("GET")
+	handler.Router.HandleFunc("/", handler.addURL).Methods("POST")
+	handler.Router.HandleFunc("/{tinyURL}", handler.getURL).Methods("GET")
 
-	handler.Router.NotFoundHandler = http.HandlerFunc(handler.NotFoundHandler)
-	handler.Router.MethodNotAllowedHandler = http.HandlerFunc(handler.NotFoundHandler)
+	handler.Router.NotFoundHandler = http.HandlerFunc(handler.notFoundHandler)
+	handler.Router.MethodNotAllowedHandler = http.HandlerFunc(handler.notFoundHandler)
 
 	return handler
 }
 
-func (s *Handler) AddURL(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) addURL(w http.ResponseWriter, r *http.Request) {
 	var reqPayload AddURLRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&reqPayload); err != nil {
@@ -67,7 +67,7 @@ func (s *Handler) AddURL(w http.ResponseWriter, r *http.Request) {
 			Error:  "Bad Request",
 			Status: http.StatusBadRequest,
 		}
-		s.SerializeJSON(w, payload.Status, payload)
+		s.serializeJSON(w, payload.Status, payload)
 		s.logger.Errorf("error decoding url to encode %v", err)
 		return
 	}
@@ -80,7 +80,7 @@ func (s *Handler) AddURL(w http.ResponseWriter, r *http.Request) {
 				Error:  err.Error(),
 				Status: http.StatusBadRequest,
 			}
-			s.SerializeJSON(w, payload.Status, payload)
+			s.serializeJSON(w, payload.Status, payload)
 			s.logger.Error(err)
 			return
 		default:
@@ -89,7 +89,7 @@ func (s *Handler) AddURL(w http.ResponseWriter, r *http.Request) {
 				Status: http.StatusInternalServerError,
 			}
 			s.logger.Error(err)
-			s.SerializeJSON(w, payload.Status, payload)
+			s.serializeJSON(w, payload.Status, payload)
 			return
 		}
 	}
@@ -98,23 +98,19 @@ func (s *Handler) AddURL(w http.ResponseWriter, r *http.Request) {
 		TinyURL: fmt.Sprintf("%s/%s", s.baseURL, shortKey),
 	}
 
-	s.SerializeJSON(w, http.StatusCreated, respPayload)
+	s.serializeJSON(w, http.StatusCreated, respPayload)
 	return
 }
 
-func (s *Handler) GetURL(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(r.URL.Path, "/")
-	var tinyURL string
-	if len(parts) > 0 {
-		tinyURL = parts[1]
-	}
-	if tinyURL == "" {
+func (s *Handler) getURL(w http.ResponseWriter, r *http.Request) {
+  tinyURL, ok :=  getTinyURLParam(r)
+	if !ok {
 		payload := HTTPError{
 			Error:  "Bad Request",
 			Status: http.StatusBadRequest,
 		}
 		s.logger.Error("parsing tiny url")
-		s.SerializeJSON(w, payload.Status, payload)
+		s.serializeJSON(w, payload.Status, payload)
 		return
 	}
 
@@ -127,7 +123,7 @@ func (s *Handler) GetURL(w http.ResponseWriter, r *http.Request) {
 				Status: http.StatusNotFound,
 			}
 			s.logger.Warnf("tiny url %s not found", tinyURL)
-			s.SerializeJSON(w, payload.Status, payload)
+			s.serializeJSON(w, payload.Status, payload)
 			return
 		default:
 			payload := HTTPError{
@@ -135,7 +131,7 @@ func (s *Handler) GetURL(w http.ResponseWriter, r *http.Request) {
 				Status: http.StatusInternalServerError,
 			}
 			s.logger.Error(err)
-			s.SerializeJSON(w, payload.Status, payload)
+			s.serializeJSON(w, payload.Status, payload)
 			return
 		}
 	}
@@ -143,7 +139,7 @@ func (s *Handler) GetURL(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (s *Handler) SerializeJSON(w http.ResponseWriter, status int, data interface{}) {
+func (s *Handler) serializeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set(contentTypeHeader, contentTypeJSON)
 	w.WriteHeader(status)
 
@@ -160,11 +156,24 @@ func (s *Handler) SerializeJSON(w http.ResponseWriter, status int, data interfac
 	}
 }
 
-func (s *Handler) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Handler) notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	payload := HTTPError{
 		Error:  "Not Found",
 		Status: http.StatusNotFound,
 	}
-	s.SerializeJSON(w, payload.Status, payload)
+	s.serializeJSON(w, payload.Status, payload)
 	return
+}
+
+func getTinyURLParam(r *http.Request) (value string, ok bool) {
+  ok = false
+  if tinyURL, ok := mux.Vars(r)["tinyURL"]; ok {
+    return tinyURL, ok
+  }
+  // workaround to support net/httptest
+  if parts := strings.Split(r.URL.Path, "/"); len(parts) > 0 {
+    value = parts[1]
+    ok = true
+  }
+  return
 }

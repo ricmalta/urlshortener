@@ -1,28 +1,27 @@
-package config_test
+package config
 
 import (
 	"os"
 	"testing"
 
-	"github.com/ricmalta/urlshortner/internal/config"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 )
 
 func TestInvalidFile(t *testing.T) {
 	const invalidPath = "./config_invalid.yaml"
-	cfg, err := config.LoadConfig(invalidPath)
+	cfg, err := LoadConfig(invalidPath)
 	assert.NotNil(t, err, "returns an error")
 	assert.Nil(t, cfg, "config instance should be null")
 }
 
 func TestValidFile(t *testing.T) {
 	const validPath = "./config.yaml"
-	cfg, err := config.LoadConfig(validPath)
+	cfg, err := LoadConfig(validPath)
 	assert.Nil(t, err, "return no error")
 	assert.NotNil(t, cfg, "returns a valid config instance")
 
-	var testCfg config.Config
+	var testCfg Config
 	file, err := os.Open(validPath)
 	if err != nil {
 		t.Error(err)

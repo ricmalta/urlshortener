@@ -1,4 +1,4 @@
-package service_test
+package service
 
 import (
 	"bytes"
@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+  "net/url"
+  "strings"
 	"testing"
 
 	"github.com/alicebob/miniredis"
 	"github.com/go-redis/redis"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/ricmalta/urlshortner/internal/service"
 	"github.com/ricmalta/urlshortner/internal/store"
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -24,6 +24,7 @@ const (
 	addInvalidURL          = "--https://www.example.com/test"
 	getNonexistentShortURL = "/aaaaa"
 	baseURL                = "http://tiny.test.com"
+	tinyURL = "http://tiny.test.com/70"
 )
 
 var (
@@ -32,7 +33,7 @@ var (
 	redisClient    *redis.Client
 	logger         *logrus.Logger
 	storeInstance  *store.Store
-	serviceHandler *service.Handler
+	serviceHandler *Handler
 )
 
 func getParams(s string) string {
@@ -61,11 +62,11 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	serviceHandler = service.NewHandler(storeInstance, logger, baseURL)
+	serviceHandler = NewHandler(storeInstance, logger, baseURL)
 }
 
 func TestAddValidURL(t *testing.T) {
-	payloadBytes, err := json.Marshal(service.AddURLRequest{
+	payloadBytes, err := json.Marshal(AddURLRequest{
 		URL: addValidURL,
 	})
 	if err != nil {
@@ -78,19 +79,19 @@ func TestAddValidURL(t *testing.T) {
 	}
 
 	respRecorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(serviceHandler.AddURL)
+	handler := http.HandlerFunc(serviceHandler.addURL)
 
 	handler.ServeHTTP(respRecorder, req)
 
 	assert.Equal(t, http.StatusCreated, respRecorder.Code)
-	var response service.AddURLResponse
+	var response AddURLResponse
 	if err := json.Unmarshal(respRecorder.Body.Bytes(), &response); err != nil {
 		t.Errorf("expect POST / to return AddURLResponse type")
 	}
 }
 
 func TestAddInvalidURL(t *testing.T) {
-	payloadBytes, err := json.Marshal(service.AddURLRequest{
+	payloadBytes, err := json.Marshal(AddURLRequest{
 		URL: addInvalidURL,
 	})
 	if err != nil {
@@ -103,12 +104,12 @@ func TestAddInvalidURL(t *testing.T) {
 	}
 
 	respRecorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(serviceHandler.AddURL)
+	handler := http.HandlerFunc(serviceHandler.addURL)
 
 	handler.ServeHTTP(respRecorder, req)
 
 	assert.Equal(t, http.StatusBadRequest, respRecorder.Code)
-	var response service.HTTPError
+	var response HTTPError
 	if err := json.Unmarshal(respRecorder.Body.Bytes(), &response); err != nil {
 		t.Errorf("expect POST / to return HTTPError type")
 	}
@@ -121,19 +122,19 @@ func TestGetInvalidURL(t *testing.T) {
 	}
 
 	respRecorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(serviceHandler.GetURL)
+	handler := http.HandlerFunc(serviceHandler.getURL)
 
 	handler.ServeHTTP(respRecorder, req)
 
 	assert.Equal(t, http.StatusNotFound, respRecorder.Code)
-	var response service.HTTPError
+	var response HTTPError
 	if err := json.Unmarshal(respRecorder.Body.Bytes(), &response); err != nil {
 		t.Errorf("expect POST / to return HTTPError type")
 	}
 }
 
 func TestGetValidURL(t *testing.T) {
-	payloadBytes, err := json.Marshal(service.AddURLRequest{
+	payloadBytes, err := json.Marshal(AddURLRequest{
 		URL: addValidURL,
 	})
 	if err != nil {
@@ -146,12 +147,12 @@ func TestGetValidURL(t *testing.T) {
 	}
 
 	respRecorder := httptest.NewRecorder()
-	handler := http.HandlerFunc(serviceHandler.AddURL)
+	handler := http.HandlerFunc(serviceHandler.addURL)
 
 	handler.ServeHTTP(respRecorder, req)
 
 	assert.Equal(t, http.StatusCreated, respRecorder.Code)
-	var AddResponse service.AddURLResponse
+	var AddResponse AddURLResponse
 	if err := json.Unmarshal(respRecorder.Body.Bytes(), &AddResponse); err != nil {
 		t.Errorf("expect POST / to return AddURLResponse type")
 	}
@@ -166,9 +167,20 @@ func TestGetValidURL(t *testing.T) {
 	}
 
 	respRecorder = httptest.NewRecorder()
-	handler = http.HandlerFunc(serviceHandler.GetURL)
+	handler = http.HandlerFunc(serviceHandler.getURL)
 
 	handler.ServeHTTP(respRecorder, req)
 
 	assert.Equal(t, http.StatusMovedPermanently, respRecorder.Code)
+}
+
+func TestGetURLParam(t *testing.T) {
+  url, err := url.Parse(tinyURL)
+  if err != nil {
+    t.Error(err)
+  }
+  request := http.Request{ URL: url }
+  tiny, ok := getTinyURLParam(&request)
+  assert.Equal(t, "70", tiny)
+  assert.Equal(t, true, ok)
 }
