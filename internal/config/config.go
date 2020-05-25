@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
@@ -15,8 +16,12 @@ type Config struct {
 }
 
 type HTTPConfig struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
+	Host              string        `yaml:"host"`
+	Port              int           `yaml:"port"`
+	ReadTimeout       time.Duration `yaml:"readTimeout"`
+	WriteTimeout      time.Duration `yaml:"writeTimeout"`
+	IdleTimeout       time.Duration `yaml:"idleTimeout"`
+	ReadHeaderTimeout time.Duration `yaml:"readHeaderTimeout"`
 }
 
 type RedisConfig struct {
